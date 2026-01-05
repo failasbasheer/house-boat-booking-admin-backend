@@ -1,7 +1,10 @@
 import express from 'express';
-import { listMasters, createMaster, updateMaster, deleteMaster } from '../controllers/master.controller';
+import { listMasters, createMaster, updateMaster, deleteMaster, seedMasterData } from '../controllers/master.controller';
 
 const router = express.Router();
+
+// Seed Route
+router.post('/seed', seedMasterData as any);
 
 // Valid types: amenities, features, badges
 router.get('/:type', listMasters as any);
