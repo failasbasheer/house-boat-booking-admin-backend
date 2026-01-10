@@ -12,7 +12,7 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/houseboat_
 import { Amenity } from '../models/Amenity';
 import { Feature } from '../models/Feature';
 
-import { Badge } from '../models/Badge';
+
 
 const seedMasters = async () => {
     try {
@@ -49,18 +49,7 @@ const seedMasters = async () => {
             { name: 'Flower Bed Decoration', category: 'other', description: 'Special honeymoon arrangement' }
         ];
 
-        // Badges
-        const badges = [
-            { label: 'Premium Class', color: 'gold', icon: 'Star' },
-            { label: 'Guest Favorite', color: 'red', icon: 'Heart' },
-            { label: 'Govt. Authorized', color: 'blue', icon: 'ShieldCheck' },
-            { label: 'Luxury Class', color: 'purple', icon: 'Crown' },
-            { label: 'Butler Service', color: 'black', icon: 'User' },
-            { label: 'Best Value', color: 'green', icon: 'ThumbsUp' },
-            { label: 'Family Friendly', color: 'orange', icon: 'Users' },
-            { label: 'Honeymoon Special', color: 'pink', icon: 'Rose' },
-            { label: 'Privacy Guaranteed', color: 'gray', icon: 'Lock' }
-        ];
+
 
 
 
@@ -76,11 +65,7 @@ const seedMasters = async () => {
         }
         console.log(`Seeded ${features.length} Features`);
 
-        // Seed Badges
-        for (const item of badges) {
-            await Badge.updateOne({ label: item.label }, { $set: item }, { upsert: true });
-        }
-        console.log(`Seeded ${badges.length} Badges`);
+
 
 
 
