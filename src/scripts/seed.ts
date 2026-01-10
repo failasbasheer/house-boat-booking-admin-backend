@@ -134,11 +134,11 @@ const seedData = async () => {
                     price_range: { min: 25000, max: 35000 }
                 },
                 images: {
-                    hero: '/uploads/houseboats/69500d1a1df798db7e2302aa-hero.jpg',
-                    exterior: '/uploads/houseboats/69500d1a1df798db7e2302aa-exterior.jpg',
-                    interior: '/uploads/houseboats/69500d1a1df798db7e2302aa-interior.jpg',
-                    bedroom: '/uploads/houseboats/69500d1a1df798db7e2302aa-bedroom.jpg',
-                    dining: '/uploads/houseboats/69500d1a1df798db7e2302aa-interior.jpg'
+                    hero: `https://houseboat-booking.s3.ap-south-1.amazonaws.com/houseboats/69500d1a1df798db7e2302aa-hero.jpg`,
+                    exterior: `https://houseboat-booking.s3.ap-south-1.amazonaws.com/houseboats/69500d1a1df798db7e2302aa-exterior.jpg`,
+                    interior: `https://houseboat-booking.s3.ap-south-1.amazonaws.com/houseboats/69500d1a1df798db7e2302aa-interior.jpg`,
+                    bedroom: `https://houseboat-booking.s3.ap-south-1.amazonaws.com/houseboats/69500d1a1df798db7e2302aa-bedroom.jpg`,
+                    dining: `https://houseboat-booking.s3.ap-south-1.amazonaws.com/houseboats/69500d1a1df798db7e2302aa-interior.jpg`
                 },
                 amenities: createdAmenities.map(a => a._id).slice(0, 10),
                 features: createdFeatures.map(f => f._id).slice(0, 5),
@@ -158,10 +158,10 @@ const seedData = async () => {
                     price_range: { min: 12000, max: 18000 }
                 },
                 images: {
-                    hero: '/uploads/houseboats/69500d191df798db7e23028d-hero.jpg',
-                    exterior: '/uploads/houseboats/69500d191df798db7e23028d-exterior.jpg',
-                    interior: '/uploads/houseboats/69500d191df798db7e23028d-interior.jpg',
-                    bedroom: '/uploads/houseboats/69500d191df798db7e23028d-bedroom.jpg',
+                    hero: `https://houseboat-booking.s3.ap-south-1.amazonaws.com/houseboats/69500d191df798db7e23028d-hero.jpg`,
+                    exterior: `https://houseboat-booking.s3.ap-south-1.amazonaws.com/houseboats/69500d191df798db7e23028d-exterior.jpg`,
+                    interior: `https://houseboat-booking.s3.ap-south-1.amazonaws.com/houseboats/69500d191df798db7e23028d-interior.jpg`,
+                    bedroom: `https://houseboat-booking.s3.ap-south-1.amazonaws.com/houseboats/69500d191df798db7e23028d-bedroom.jpg`,
                 },
                 amenities: createdAmenities.map(a => a._id).slice(5, 12),
                 features: createdFeatures.map(f => f._id).slice(3, 8),

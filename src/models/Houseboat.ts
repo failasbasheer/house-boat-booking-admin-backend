@@ -14,12 +14,7 @@ const houseboatSchema = new mongoose.Schema({
   has_ac: { type: Boolean, default: true },
   cruise_hours: { type: Number, default: 22 },
 
-  price_override: {
-    price_range: {
-      min: { type: Number, required: true },
-      max: { type: Number, required: true }
-    }
-  },
+
 
   shared_package_available: { type: Boolean, default: false },
 

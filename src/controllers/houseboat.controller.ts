@@ -3,6 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import { CategoryController } from './category.controller';
 import { Houseboat } from '../models/Houseboat';
+import { s3 } from '../config/s3';
+import { DeleteObjectCommand } from '@aws-sdk/client-s3';
 import '../models/Category';
 import '../models/Amenity';
 import '../models/Feature';
@@ -33,9 +35,7 @@ export const listHouseboats = async (req: any, res: any) => {
     }
 
     let sortOption: any = { createdAt: -1 };
-    if (sort === 'price_asc') sortOption = { 'price_override.price_range.min': 1 };
-    else if (sort === 'price_desc') sortOption = { 'price_override.price_range.min': -1 };
-    else if (sort === 'name_asc') sortOption = { name: 1 };
+    if (sort === 'name_asc') sortOption = { name: 1 };
     else if (sort === 'newest') sortOption = { createdAt: -1 };
     else if (sort === 'oldest') sortOption = { createdAt: 1 };
 
@@ -122,15 +122,28 @@ export const deleteHouseboat = async (req: any, res: any) => {
 
     // Delete associated images
     if (boat.images) {
-      Object.values(boat.images).forEach((imageUrl: any) => {
-        if (typeof imageUrl === 'string' && imageUrl.startsWith('/uploads/')) {
-          // Construct absolute path
-          const filePath = path.join(__dirname, '../../', imageUrl);
-          if (fs.existsSync(filePath)) {
-            try { fs.unlinkSync(filePath); } catch (err) { console.error('Failed to delete file:', filePath, err); }
+      const deletePromises = Object.values(boat.images).map(async (imageUrl: any) => {
+        if (typeof imageUrl === 'string') {
+          // Basic heuristic to get key from S3 URL
+          // URL: https://houseboat-booking.s3.ap-south-1.amazonaws.com/houseboats/key.jpg
+          // or custom domain. 
+          // We can split by '/' and take last parts? Or generic URL parsing.
+          try {
+            const urlParts = imageUrl.split('.amazonaws.com/');
+            if (urlParts.length === 2) {
+              const key = urlParts[1]; // e.g. "houseboats/key.jpg"
+              await s3.send(new DeleteObjectCommand({
+                Bucket: process.env.S3_BUCKET_NAME,
+                Key: key
+              }));
+              console.log('Deleted S3 object:', key);
+            }
+          } catch (err) {
+            console.error('Failed to delete S3 image:', imageUrl, err);
           }
         }
       });
+      await Promise.all(deletePromises);
     }
 
     await Houseboat.findByIdAndDelete(req.params.id);
@@ -140,44 +153,4 @@ export const deleteHouseboat = async (req: any, res: any) => {
 
     res.status(204).send();
   } catch (e: any) { res.status(500).json({ error: e.message }); }
-};
-
-export const migratePricing = async (req: any, res: any) => {
-  try {
-    const collection = Houseboat.collection;
-    const boats = await collection.find({}).toArray();
-    let updatedCount = 0;
-
-    for (const b of boats) {
-      // Check if ALREADY in new deeply nested format
-      const hasDeepNest = b.price_override?.price_range?.min !== undefined;
-
-      if (!hasDeepNest) {
-        // Source could be price_override.min (from prev step) or min_price (legacy)
-        const oldMin = (b.price_override as any)?.min ?? b.min_price ?? 0;
-        const oldMax = (b.price_override as any)?.max ?? b.max_price ?? 0;
-
-        const newStructure = {
-          price_range: {
-            min: oldMin,
-            max: oldMax
-          }
-        };
-
-        await collection.updateOne(
-          { _id: b._id },
-          {
-            $set: { price_override: newStructure },
-            $unset: { min_price: "", max_price: "" }
-          }
-        );
-        updatedCount++;
-      }
-    }
-
-    res.json({ message: 'Migration (Deep Nest) complete', updatedCount, totalScanned: boats.length });
-  } catch (e: any) {
-    console.error(e);
-    res.status(500).json({ error: e.message });
-  }
 };

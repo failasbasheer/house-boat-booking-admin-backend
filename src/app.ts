@@ -12,6 +12,8 @@ import masterRoutes from './routes/master.routes';
 import categoryRoutes from './routes/category.routes';
 import availabilityRoutes from './routes/availability.routes';
 import bookingRoutes from './routes/booking.routes';
+import enquiryRoutes from './routes/enquiry.routes';
+import settingsRoutes from './routes/settings.routes';
 import uploadRoutes from './routes/upload.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import contentRoutes from './routes/content.routes';
@@ -42,6 +44,8 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/content', contentRoutes);
 app.use('/api/availability', availabilityRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/enquiries', enquiryRoutes);
+app.use('/api/settings', settingsRoutes);
 
 app.use(errorHandler);
 

@@ -3,8 +3,11 @@ import mongoose from 'mongoose';
 const categorySchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
     slug: { type: String, required: true, unique: true },
+    type: { type: String, enum: ['category', 'package'], default: 'category' },
 
     display_name: { type: String, required: true },
+    base_price: { type: Number },
+    whatsappTemplate: { type: String },
     imagePlaceholder: { type: String },
     is_active: { type: Boolean, default: true },
     sortOrder: { type: Number, default: 0 },
@@ -15,6 +18,10 @@ const categorySchema = new mongoose.Schema({
     secondaryDescription: { type: String },
     description: { type: String },
     availableCount: { type: Number, default: 0 },
+
+    // Promo / Hero
+    priceDisplay: { type: String },
+    isHero: { type: Boolean, default: false },
 
 
     amenitiesList: [{

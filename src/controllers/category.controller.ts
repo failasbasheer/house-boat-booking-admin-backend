@@ -3,6 +3,8 @@ import mongoose from 'mongoose';
 import fs from 'fs';
 import path from 'path';
 import { Category } from '../models/Category';
+import { s3 } from '../config/s3';
+import { DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 export const CategoryController = {
     // Get all categories
@@ -39,7 +41,13 @@ export const CategoryController = {
     // Create new category
     create: async (req: Request, res: Response) => {
         try {
-            const { display_name, id, slug } = req.body;
+            const { display_name, id, slug, isHero } = req.body;
+
+            // Enforce single Hero
+            if (isHero) {
+                await Category.updateMany({ isHero: true }, { $set: { isHero: false } });
+            }
+
             // Generate slug/id if missing
             const finalSlug = slug || id || display_name?.toLowerCase().replace(/[^a-z0-9]+/g, '-');
             const finalId = id || finalSlug;
@@ -61,6 +69,13 @@ export const CategoryController = {
     update: async (req: Request, res: Response) => {
         try {
             const { id } = req.params;
+            const { isHero } = req.body;
+
+            // Enforce single Hero
+            if (isHero) {
+                await Category.updateMany({ isHero: true, _id: { $ne: id } }, { $set: { isHero: false } });
+            }
+
             // Allow updating all fields passed in body
             const category = await Category.findByIdAndUpdate(
                 id,
@@ -88,11 +103,20 @@ export const CategoryController = {
             // But if user uploaded an image override, it might be in /uploads.
             // Check 'image' or 'imagePlaceholder' field (Schema dependent)
             // Assuming imagePlaceholder is the field.
-            const imageUrl = category.imagePlaceholder;
-            if (imageUrl && typeof imageUrl === 'string' && imageUrl.startsWith('/uploads/')) {
-                const filePath = path.join(__dirname, '../../', imageUrl);
-                if (fs.existsSync(filePath)) {
-                    try { fs.unlinkSync(filePath); } catch (err) { console.error('Failed to delete file:', filePath, err); }
+            const imageUrl = category.imagePlaceholder; // Assuming this stores the URL
+            if (imageUrl && typeof imageUrl === 'string' && imageUrl.includes('.amazonaws.com/')) {
+                try {
+                    const urlParts = imageUrl.split('.amazonaws.com/');
+                    if (urlParts.length === 2) {
+                        const key = urlParts[1];
+                        await s3.send(new DeleteObjectCommand({
+                            Bucket: process.env.S3_BUCKET_NAME,
+                            Key: key
+                        }));
+                        console.log('Deleted S3 object:', key);
+                    }
+                } catch (err) {
+                    console.error('Failed to delete S3 image:', imageUrl, err);
                 }
             }
 
@@ -239,17 +263,87 @@ export const CategoryController = {
                     }
                 );
             }
-
-            // Sync counts after seeding
-            await CategoryController.syncCounts(req, res);
-            // Response sent by syncCounts if called directly, but here we might double send? 
-            // Better to split logic or just call internal function. 
-            // For now, let's keep seedDefaults simple and just return.
-            // Actually, let's implement syncCounts separately and not call it here to avoid response conflicts.
-
-            if (!res.headersSent) res.json({ message: 'Categories seeded' });
+            res.json({ message: 'Categories seeded' });
         } catch (error: any) {
-            if (!res.headersSent) res.status(500).json({ message: error.message });
+            res.status(500).json({ message: error.message });
+        }
+    },
+
+    seedPackages: async (req: Request, res: Response) => {
+        try {
+            // 5 Seed Packages as requested
+            const packages = [
+                {
+                    slug: 'kerala-backwaters-delight',
+                    display_name: 'Kerala Backwaters Delight',
+                    tagline: 'Experience the Serenity',
+                    description: 'A perfect 3-day getaway exploring the tranquil backwaters of Alleppey.',
+                    imagePlaceholder: '/packages/delight.webp',
+                    priceDisplay: '₹ 15,000',
+                    type: 'package',
+                    isHero: true,
+                    sortOrder: 1
+                },
+                {
+                    slug: 'romantic-escape',
+                    display_name: 'Romantic Escape',
+                    tagline: 'For Just the Two of You',
+                    description: 'Candlelight dinners, flower decorations, and complete privacy.',
+                    imagePlaceholder: '/packages/romantic.webp',
+                    priceDisplay: '₹ 20,000',
+                    type: 'package',
+                    isHero: false,
+                    sortOrder: 2
+                },
+                {
+                    slug: 'family-fun-cruise',
+                    display_name: 'Family Fun Cruise',
+                    tagline: 'Memories for a Lifetime',
+                    description: 'Spacious boats with activities for kids and relaxation for adults.',
+                    imagePlaceholder: '/packages/family.webp',
+                    priceDisplay: '₹ 25,000',
+                    type: 'package',
+                    isHero: false,
+                    sortOrder: 3
+                },
+                {
+                    slug: 'luxury-experience',
+                    display_name: 'Luxury Experience',
+                    tagline: 'Unmatched Elegance',
+                    description: 'Premium amenities, butler service, and jacuzzi on board.',
+                    imagePlaceholder: '/packages/luxury_pkg.webp',
+                    priceDisplay: '₹ 40,000',
+                    type: 'package',
+                    isHero: false,
+                    sortOrder: 4
+                },
+                {
+                    slug: 'corporate-retreat',
+                    display_name: 'Corporate Retreat',
+                    tagline: 'Business & Leisure',
+                    description: 'Conference facilities with a view. Perfect for team bonding.',
+                    imagePlaceholder: '/packages/corporate.webp',
+                    priceDisplay: '₹ 50,000',
+                    type: 'package',
+                    isHero: false,
+                    sortOrder: 5
+                }
+            ];
+
+            for (const pkg of packages) {
+                await Category.findOneAndUpdate(
+                    { slug: pkg.slug },
+                    { $set: pkg },
+                    { upsert: true, new: true }
+                );
+            }
+
+            // Ensure only one hero (latest one wins or logic holds)
+            // In this seed, only the first one isHero=true.
+
+            res.json({ message: 'Packages seeded' });
+        } catch (error: any) {
+            res.status(500).json({ message: error.message });
         }
     },
 
