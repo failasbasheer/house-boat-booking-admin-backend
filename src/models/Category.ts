@@ -38,8 +38,19 @@ const categorySchema = new mongoose.Schema({
         name: String,
         location: String,
         text: String
-    }]
+    }],
+
+    // Package Specific Fields
+    itinerary: [{
+        day: { type: Number },
+        title: { type: String },
+        activity: { type: String }
+    }],
+    inclusions: [String],
+    exclusions: [String]
 
 }, { timestamps: true });
 
 export const Category = mongoose.model('Category', categorySchema);
+export const Package = mongoose.model('Package', categorySchema, 'packages');
+

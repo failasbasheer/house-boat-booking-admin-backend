@@ -1,16 +1,15 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
-import fs from 'fs';
-import path from 'path';
 import { Category } from '../models/Category';
 import { s3 } from '../config/s3';
 import { DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 export const CategoryController = {
-    // Get all categories
+    // Get all categories (filtered by type: 'category')
     getAll: async (req: Request, res: Response) => {
         try {
             const categories = await Category.aggregate([
+                { $match: { type: 'category' } }, // Filter
                 {
                     $lookup: {
                         from: 'houseboats',
@@ -41,12 +40,7 @@ export const CategoryController = {
     // Create new category
     create: async (req: Request, res: Response) => {
         try {
-            const { display_name, id, slug, isHero } = req.body;
-
-            // Enforce single Hero
-            if (isHero) {
-                await Category.updateMany({ isHero: true }, { $set: { isHero: false } });
-            }
+            const { display_name, id, slug } = req.body;
 
             // Generate slug/id if missing
             const finalSlug = slug || id || display_name?.toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -54,6 +48,7 @@ export const CategoryController = {
 
             const category = new Category({
                 ...req.body,
+                type: 'category', // Force type
                 id: finalId,
                 slug: finalSlug
             });
@@ -69,17 +64,13 @@ export const CategoryController = {
     update: async (req: Request, res: Response) => {
         try {
             const { id } = req.params;
-            const { isHero } = req.body;
 
-            // Enforce single Hero
-            if (isHero) {
-                await Category.updateMany({ isHero: true, _id: { $ne: id } }, { $set: { isHero: false } });
-            }
+            // Allow updating all fields passed in body, but ensure type remains 'category' if accidentally passed
+            const updateData = { ...req.body, type: 'category' };
 
-            // Allow updating all fields passed in body
-            const category = await Category.findByIdAndUpdate(
-                id,
-                req.body,
+            const category = await Category.findOneAndUpdate(
+                { _id: id, type: 'category' },
+                updateData,
                 { new: true }
             );
 
@@ -95,15 +86,11 @@ export const CategoryController = {
     delete: async (req: Request, res: Response) => {
         try {
             const { id } = req.params;
-            const category = await Category.findById(id);
+            const category = await Category.findOne({ _id: id, type: 'category' });
             if (!category) return res.status(404).json({ message: 'Category not found' });
 
             // Delete associated image if it's an uploaded file
-            // Note: Seeded images like '/packages/deluxe.webp' shouldn't be deleted if they are not in uploads/.
-            // But if user uploaded an image override, it might be in /uploads.
-            // Check 'image' or 'imagePlaceholder' field (Schema dependent)
-            // Assuming imagePlaceholder is the field.
-            const imageUrl = category.imagePlaceholder; // Assuming this stores the URL
+            const imageUrl = category.imagePlaceholder;
             if (imageUrl && typeof imageUrl === 'string' && imageUrl.includes('.amazonaws.com/')) {
                 try {
                     const urlParts = imageUrl.split('.amazonaws.com/');
@@ -113,7 +100,7 @@ export const CategoryController = {
                             Bucket: process.env.S3_BUCKET_NAME,
                             Key: key
                         }));
-                        console.log('Deleted S3 object:', key);
+
                     }
                 } catch (err) {
                     console.error('Failed to delete S3 image:', imageUrl, err);
@@ -220,9 +207,6 @@ export const CategoryController = {
                 }
             ];
 
-            // Clear existing to remove old schema structure (Optional: or just upsert)
-            // await Category.deleteMany({}); // Dangerous to uncomment
-
             for (const def of defaults) {
                 await Category.findOneAndUpdate(
                     { slug: def.slug },
@@ -230,26 +214,7 @@ export const CategoryController = {
                         $set: {
                             id: def.id,
                             slug: def.slug,
-                        },
-                        $setOnInsert: {
-                            display_name: def.display_name,
-                            is_active: def.is_active,
-                            sortOrder: def.sortOrder,
-                            // Set these fields if missing or just overwrite them? 
-                            // Using $set for seeded content ensures DB matches code.
-                            // But original code used $setOnInsert for display_name, which means it wouldn't update.
-                            // Let's move these to $set to FORCE update the missing data.
-                        }
-                    },
-                    { upsert: true, new: true }
-                );
-
-                // Second pass to ensure rich data is set even if document exists
-                // We do this to "fix" the existing documents that have missing data.
-                await Category.findOneAndUpdate(
-                    { slug: def.slug },
-                    {
-                        $set: {
+                            type: 'category', // Ensure seeded are categories
                             tagline: def.tagline,
                             description: def.description,
                             secondaryDescription: def.secondaryDescription,
@@ -259,8 +224,14 @@ export const CategoryController = {
                             stats: def.stats,
                             reviews: def.reviews,
                             imagePlaceholder: def.imagePlaceholder
+                        },
+                        $setOnInsert: {
+                            display_name: def.display_name,
+                            is_active: def.is_active,
+                            sortOrder: def.sortOrder
                         }
-                    }
+                    },
+                    { upsert: true, new: true }
                 );
             }
             res.json({ message: 'Categories seeded' });
@@ -269,88 +240,10 @@ export const CategoryController = {
         }
     },
 
-    seedPackages: async (req: Request, res: Response) => {
-        try {
-            // 5 Seed Packages as requested
-            const packages = [
-                {
-                    slug: 'kerala-backwaters-delight',
-                    display_name: 'Kerala Backwaters Delight',
-                    tagline: 'Experience the Serenity',
-                    description: 'A perfect 3-day getaway exploring the tranquil backwaters of Alleppey.',
-                    imagePlaceholder: '/packages/delight.webp',
-                    priceDisplay: '₹ 15,000',
-                    type: 'package',
-                    isHero: true,
-                    sortOrder: 1
-                },
-                {
-                    slug: 'romantic-escape',
-                    display_name: 'Romantic Escape',
-                    tagline: 'For Just the Two of You',
-                    description: 'Candlelight dinners, flower decorations, and complete privacy.',
-                    imagePlaceholder: '/packages/romantic.webp',
-                    priceDisplay: '₹ 20,000',
-                    type: 'package',
-                    isHero: false,
-                    sortOrder: 2
-                },
-                {
-                    slug: 'family-fun-cruise',
-                    display_name: 'Family Fun Cruise',
-                    tagline: 'Memories for a Lifetime',
-                    description: 'Spacious boats with activities for kids and relaxation for adults.',
-                    imagePlaceholder: '/packages/family.webp',
-                    priceDisplay: '₹ 25,000',
-                    type: 'package',
-                    isHero: false,
-                    sortOrder: 3
-                },
-                {
-                    slug: 'luxury-experience',
-                    display_name: 'Luxury Experience',
-                    tagline: 'Unmatched Elegance',
-                    description: 'Premium amenities, butler service, and jacuzzi on board.',
-                    imagePlaceholder: '/packages/luxury_pkg.webp',
-                    priceDisplay: '₹ 40,000',
-                    type: 'package',
-                    isHero: false,
-                    sortOrder: 4
-                },
-                {
-                    slug: 'corporate-retreat',
-                    display_name: 'Corporate Retreat',
-                    tagline: 'Business & Leisure',
-                    description: 'Conference facilities with a view. Perfect for team bonding.',
-                    imagePlaceholder: '/packages/corporate.webp',
-                    priceDisplay: '₹ 50,000',
-                    type: 'package',
-                    isHero: false,
-                    sortOrder: 5
-                }
-            ];
-
-            for (const pkg of packages) {
-                await Category.findOneAndUpdate(
-                    { slug: pkg.slug },
-                    { $set: pkg },
-                    { upsert: true, new: true }
-                );
-            }
-
-            // Ensure only one hero (latest one wins or logic holds)
-            // In this seed, only the first one isHero=true.
-
-            res.json({ message: 'Packages seeded' });
-        } catch (error: any) {
-            res.status(500).json({ message: error.message });
-        }
-    },
-
     // Internal helper to sync counts
     syncCategoryCounts: async () => {
         try {
-            await Category.updateMany({}, { $set: { availableCount: 0 } });
+            await Category.updateMany({ type: 'category' }, { $set: { availableCount: 0 } });
             const counts = await mongoose.model('Houseboat').aggregate([
                 { $group: { _id: '$category_id', count: { $sum: 1 } } }
             ]);
@@ -359,7 +252,7 @@ export const CategoryController = {
                     await Category.findByIdAndUpdate(c._id, { availableCount: c.count });
                 }
             }
-            console.log('Category counts synced');
+
         } catch (error) {
             console.error('Failed to sync category counts', error);
         }

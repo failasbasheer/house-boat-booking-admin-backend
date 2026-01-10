@@ -17,6 +17,7 @@ import settingsRoutes from './routes/settings.routes';
 import uploadRoutes from './routes/upload.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import contentRoutes from './routes/content.routes';
+import packageRoutes from './routes/package.routes';
 
 const app = express();
 
@@ -41,6 +42,7 @@ app.use('/api/masters', masterRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/packages', packageRoutes);
 app.use('/api/content', contentRoutes);
 app.use('/api/availability', availabilityRoutes);
 app.use('/api/bookings', bookingRoutes);

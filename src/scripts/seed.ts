@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { Amenity } from '../models/Amenity';
 import { Feature } from '../models/Feature';
-import { Badge } from '../models/Badge';
+
 
 import { Category } from '../models/Category';
 import { Houseboat } from '../models/Houseboat';
@@ -26,7 +26,7 @@ const seedData = async () => {
         // Clear existing Data
         await Amenity.deleteMany({});
         await Feature.deleteMany({});
-        await Badge.deleteMany({});
+
 
         await Category.deleteMany({});
         await Houseboat.deleteMany({});
@@ -70,15 +70,7 @@ const seedData = async () => {
         const createdFeatures = await Feature.insertMany(features);
         console.log(`✅ Seeded ${createdFeatures.length} Features`);
 
-        // --- 3. BADGES ---
-        const badges = [
-            { label: 'Bestseller', color: 'orange', icon: 'Star' },
-            { label: 'Premium', color: 'purple', icon: 'Crown' },
-            { label: 'Luxury', color: 'gold', icon: 'Gem' },
-            { label: 'New Arrival', color: 'green', icon: 'Sparkles' },
-        ];
-        const createdBadges = await Badge.insertMany(badges);
-        console.log(`✅ Seeded ${createdBadges.length} Badges`);
+
 
 
 

@@ -136,7 +136,7 @@ export const deleteHouseboat = async (req: any, res: any) => {
                 Bucket: process.env.S3_BUCKET_NAME,
                 Key: key
               }));
-              console.log('Deleted S3 object:', key);
+
             }
           } catch (err) {
             console.error('Failed to delete S3 image:', imageUrl, err);
